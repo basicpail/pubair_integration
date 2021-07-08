@@ -1,0 +1,8 @@
+{
+  "domain": "pubair",
+  "name": "Air Korea Open API",
+  "config_flow": true,
+  "documentation": "",
+  "requirements": [],
+  "codeowners": ["@hkder"]
+}

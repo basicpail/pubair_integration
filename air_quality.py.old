@@ -1,0 +1,299 @@
+"""Support for Met.no weather service."""
+import logging
+import ctypes
+
+import voluptuous as vol
+
+from homeassistant.components.air_quality import AirQualityEntity
+
+from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.const import (
+    CONF_ELEVATION,
+    CONF_LATITUDE,
+    CONF_LONGITUDE,
+    CONF_NAME,
+    LENGTH_INCHES,
+    LENGTH_KILOMETERS,
+    LENGTH_MILES,
+    LENGTH_MILLIMETERS,
+    PRESSURE_HPA,
+    PRESSURE_INHG,
+    TEMP_CELSIUS,
+)
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from homeassistant.const import (
+    TEMP_CELSIUS,
+    PERCENTAGE,
+    CONCENTRATION_PARTS_PER_MILLION,
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+    CONCENTRATION_PARTS_PER_BILLION,
+    DEVICE_CLASS_TEMPERATURE,
+    DEVICE_CLASS_HUMIDITY,
+)
+
+from .const import (
+    DOMAIN,
+    CONF_UMDNAME,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+ATTRIBUTION = (
+    "RealTime Air Pollution Levels from apis.data.go.kr delivered by Air Korea."
+)
+DEFAULT_NAME = "Air Korea Open API"
+
+MEASUREMENTS = [
+    "particulate_matter_2_5",
+    "particulate_matter_10",
+    "sulphur_dioxide",
+    "nitrogen_oxide",
+    "carbon_monoxide",
+    "ozone",
+]
+
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Add a weather entity from a config_entry."""
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.info(f"coordinator: {coordinator}")
+    print(f"coordinator: {coordinator}")
+    print(f"config_entry: {config_entry}")
+    print(f"config_entry.data: {config_entry.data}")
+
+    entities = []
+    for i,mesurement in enumerate(MEASUREMENTS):
+        entities.append(PubAirWeather(coordinator, config_entry.data, True, mesurement,i))
+
+
+    async_add_entities(entities)
+
+
+class PubAirWeather(CoordinatorEntity, AirQualityEntity):
+    """Implementation of a Met.no weather condition."""
+
+    def __init__(self, coordinator, config, hourly, MEASUREMENTS,cnt):
+        """Initialise the platform with a data instance and site."""
+        super().__init__(coordinator)
+        self._config = config
+        self._hourly = hourly
+        self._icon = "mdi:blur"
+        self._data_type = MEASUREMENTS
+        self._cnt = cnt #for debugging
+        
+        # self._particulate_matter_2_5 = ""
+        # self._particulate_matter_10 = ""
+        # self._sulphur_dioxide = ""
+        # self._nitrogen_oxide = ""
+        # self._carbon_monoxide = ""
+        # self._ozone = ""
+
+        # setattr(PubAirWeather, self._particulate_matter_2_5, self.particulate_matter_2_5)
+        # setattr(PubAirWeather, self._particulate_matter_10, self.particulate_matter_10)
+        # setattr(PubAirWeather, self._sulphur_dioxide, self.sulphur_dioxide)
+        # setattr(PubAirWeather, self._nitrogen_oxide, self.nitrogen_oxide)
+        # setattr(PubAirWeather, self._carbon_monoxide, self.carbon_monoxide)
+        # setattr(PubAirWeather, self._ozone, self.ozone)
+
+        # self._data_list =[
+        #     self._particulate_matter_2_5,
+        #     self._particulate_matter_10,
+        #     self._sulphur_dioxide,
+        #     self._nitrogen_oxide,
+        #     self._carbon_monoxide,
+        #     self._ozone,
+        # ]
+
+        #print(f"coordinator.data.current_airpollution_data: {coordinator.data.current_airpollution_data}")
+        #print(f"hourly: {hourly}")
+        print("init class!!!!!@")
+
+###########################################################
+
+    @property
+    def unique_id(self):
+        """Return unique ID."""
+        name_appendix = ""
+        if self._hourly:
+            name_appendix = "-hourly"
+
+        return f"{self._config[CONF_UMDNAME]}{self._data_type}"
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        name = self._config.get(CONF_UMDNAME)
+        name_appendix = ""
+        if self._hourly:
+            name_appendix = " Hourly123" #lovelace id
+
+        if name is not None:
+            return f"{name}{self._data_type}"
+
+        return f"{DEFAULT_NAME}{self._data_type}"
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        return self._icon
+
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        """Return if the entity should be enabled when first added to the entity registry."""
+        print(f"self._houly: {self._hourly}")
+        return self._hourly
+
+    # def listup_data(data):
+    #     values = []
+
+    @property
+    def particulate_matter_2_5(self):
+        pm2d5 = self.coordinator.data.current_airpollution_data["pm25Value"]
+        return float(pm2d5)
+
+    @property
+    def particulate_matter_10(self):
+        pm10 = self.coordinator.data.current_airpollution_data["pm10Value"]
+        return float(pm10)
+
+    @property
+    def sulphur_dioxide(self):
+        so2 = self.coordinator.data.current_airpollution_data["so2Value"]
+        print("#############################sulphur_dioxide: {0}".format(so2))
+        return float(so2)
+
+    @property
+    def nitrogen_oxide(self):
+        no2 = self.coordinator.data.current_airpollution_data["no2Value"]
+        return float(no2)
+
+    @property
+    def carbon_monoxide(self):
+        co = self.coordinator.data.current_airpollution_data["coValue"]
+        return float(co)
+
+    @property
+    def ozone(self):
+        o3 = self.coordinator.data.current_airpollution_data["o3Value"]
+        print("@property def ozone called")
+        return float(o3)
+    
+    
+
+    @property
+    def state(self):
+        #print(f"self._data_type: {getattr(PubAirWeather, self._data_type)}")
+        #print(f"self._data_type2: {locals()[self._data_type]()}")
+        #setattr(PubAirWeather, self._data_type, self.MEASUREMENTS[0])
+        #testing = getattr(PubAirWeather, self._data_type)
+        #print(dir(testing))
+        #print(f"testing ctypes: {ctypes.cast(id(testing), ctypes.py_object).value}")
+        #print(f"testing ctypes2: {ctypes.cast(id(testing), ctypes.py_object)}")
+        #print(f"testing3: {testing}")
+
+        #testing2 = getattr(PubAirWeather, self._data_list[self._cnt])
+        #print(f"testing2: {testing2}")
+
+
+        #print(f"self._cnt: {self._cnt}")
+
+        #if self._cnt == 0:
+        if self._data_type == "particulate_matter_2_5":
+            print("come into cnt ==0")
+            #return getattr(PubAirWeather, self._particulate_matter_2_5)
+            return self.particulate_matter_2_5
+
+        elif self._data_type == "particulate_matter_10":
+            print("particular_matter_10 called")
+            #return getattr(PubAirWeather, self._particulate_matter_1r0)
+            return self.particulate_matter_10
+        
+        elif self._data_type == "sulphur_dioxide":
+            print("come into cnt ==2")
+            return self.sulphur_dioxide
+
+        elif self._data_type == "nitrogen_oxide":
+            print("come into cnt ==3")
+            return self.nitrogen_oxide
+
+        elif self._data_type == "carbon_monoxide":
+            print("come into cnt ==4")
+            return self.carbon_monoxide
+        
+        elif self._data_type == "ozone":
+            print("come into cnt ==5")
+            return self.ozone
+    
+    
+    
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement of this entity."""
+
+        if self._data_type == "particulate_matter_2_5":
+            print("come into cnt ==0")
+            #return getattr(PubAirWeather, self._particulate_matter_2_5)
+            return CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+
+        elif self._data_type == "particulate_matter_10":
+            print("come into cnt ==1")
+            #return getattr(PubAirWeather, self._particulate_matter_10)
+            return CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+        
+        elif self._data_type == "sulphur_dioxide":
+            print("come into cnt ==2")
+            return CONCENTRATION_PARTS_PER_MILLION
+
+        elif self._data_type == "nitrogen_oxide":
+            print("come into cnt ==3")
+            return CONCENTRATION_PARTS_PER_MILLION
+
+        elif self._data_type == "carbon_monoxide":
+            print("come into cnt ==4")
+            return CONCENTRATION_PARTS_PER_MILLION
+        
+        elif self._data_type == "ozone":
+            print("come into cnt ==5")
+            return CONCENTRATION_PARTS_PER_MILLION
+        
+        #print(f"testing ctypes: {ctypes.cast(id(testing2), ctypes.py_object).value}")
+
+        #print(f"self._data_type: {self.particulate_matter_2_5}")
+
+        #return getattr(PubAirWeather, self._data_type)
+        #return locals()[self._data_type]
+        #return self.particulate_matter_2_5
+        #return testing.__get__f"{self._config[CONF_UMDNAME]}{self._data_type}"
+        #return f"{testing}"
+        #return ctypes.cast(id(testing2), ctypes.py_object).value
+        #return getattr(PubAirWeather, self._data_list[self._cnt])
+
+
+    
+   
+    # @property
+    # def state(self):
+    #     values = []
+    #     values.append(self.particulate_matter_2_5)
+    #     values.append(self.particulate_matter_10)
+    #     values.append(self.sulphur_dioxide)
+    #     values.append(self.nitrogen_oxide)
+    #     print("state")        
+    #     return values
+
+    @property
+    def attribution(self):
+        """Return the attribution."""
+        return ATTRIBUTION
+
+    @property
+    def device_info(self):
+        """Device info."""
+        return {
+            "identifiers": {(DOMAIN,)},
+            "manufacturer": "Air Korea",
+            "model": "Real Time Air Pollution",
+            "default_name": "Real Time Air Pollution",
+            "entry_type": "service",
+        }

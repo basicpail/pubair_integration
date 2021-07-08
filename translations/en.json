@@ -1,0 +1,16 @@
+{
+    "config": {
+        "error": {
+            "already_configured": "Service is already configured"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "umdName": "umdName"
+                },
+                "description": "Air Korea Open API",
+                "title": "Location"
+            }
+        }
+    }
+}
